@@ -1,0 +1,55 @@
+package com.kuroanime.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val SurfaceLight = Color(0xFFF5F5F5)
+val OnSurfaceDark = Color(0xFFE8E8EC)
+val OnSurfaceLight = Color(0xFF1C1C1E)
+val OutlineLight = Color(0xFFC6C6C8)
+
+// --- Dark Red Theme Colors (logo-matched) ---
+val DarkRedPrimary = Color(0xFFEF5350)
+val DarkRedOnPrimary = Color(0xFFFFFFFF)
+val DarkRedPrimaryContainer = Color(0xFF93000A)
+val DarkRedOnPrimaryContainer = Color(0xFFFFDAD4)
+val DarkRedSecondary = Color(0xFFFF8A65)
+val DarkRedOnSecondary = Color(0xFF3E0000)
+val DarkRedSecondaryContainer = Color(0xFF5C0000)
+val DarkRedOnSecondaryContainer = Color(0xFFFFCCBC)
+val DarkRedTertiary = Color(0xFFFFB74D)
+val DarkRedOnTertiary = Color(0xFF4A2000)
+val DarkRedTertiaryContainer = Color(0xFF6D3400)
+val DarkRedOnTertiaryContainer = Color(0xFFFFE0B2)
+val DarkRedOutline = Color(0xFF49454F)
+val DarkRedOutlineVariant = Color(0xFF2E2A35)
+val DarkRedInversePrimary = Color(0xFFFF5252)
+
+// --- Surface containers for depth hierarchy ---
+val SurfaceContainer = Color(0xFF0A0A0F)
+val SurfaceContainerHigh = Color(0xFF121218)
+val SurfaceContainerHighest = Color(0xFF1A1A22)
+val SurfaceContainerLow = Color(0xFF08080C)
+val SurfaceContainerLowest = Color(0xFF000000)
+val SurfaceBright = Color(0xFF2B2930)
+val SurfaceDim = Color(0xFF000000)
+
+val RedPrimary = Color(0xFFEF5350)
+val RedOnPrimary = Color(0xFFFFFFFF)
+val RedPrimaryContainer = Color(0xFFFFCDD2)
+val RedOnPrimaryContainer = Color(0xFFB71C1C)
+val RedSecondary = Color(0xFFFF7043)
+val RedOnSecondary = Color(0xFFFFFFFF)
+val RedSecondaryContainer = Color(0xFFFFE0B2)
+val RedOnSecondaryContainer = Color(0xFF3E2723)
+val RedBackground = Color(0xFFFCFCFC)
+val RedOnBackground = Color(0xFF1C1C1E)
+val RedSurface = Color(0xFFFFFFFF)
+val RedOnSurface = Color(0xFF1C1C1E)
+val RedSurfaceVariant = Color(0xFFF5F5F5)
+val RedOnSurfaceVariant = Color(0xFF49454F)
+val RedOutline = Color(0xFFE0E0E0)
+val RedOutlineVariant = Color(0xFFCAC4D0)
+
+val OledBackground = Color(0xFF000000)
+val OledSurface = Color(0xFF050508)
+val OledSurfaceVariant = Color(0xFF0A0A0F)
