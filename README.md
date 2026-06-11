@@ -68,38 +68,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## 🧩 Sistema de Extensiones
 
-KuroAnime usa un sistema modular de **extensiones** que pueden estar escritas en **JavaScript** (ejecutado con QuickJS) o **Kotlin** nativo. Las extensiones JS tienen prioridad sobre las de Kotlin.
-
-### Extensiones Incluidas
-
-| Extensión | Tipo | Motor | Idioma | Sitio |
-|-----------|------|-------|--------|-------|
-| **AnimeFLV** | Kotlin | Jsoup | Sub | animeflv.net |
-| **Latanime** | Kotlin | Jsoup | Latino | latanime.org |
-| **TioAnime** | Kotlin | Ktor | Sub | tioanime.com |
-| **Aniyae** | Kotlin | Ktor | Sub | open.aniyae.net |
-| **AnimeOnlineNinja** | JS | QuickJS | Sub | animeonline.ninja |
-| **Cuevana3** | JS | QuickJS | Latino | cuevana3.nu |
-| **MonosChinos** | JS | QuickJS | Sub | monoschinos.st |
-
-### API de Extensiones
-
-Cada extensión implementa esta interfaz:
-
-```kotlin
-interface AnimeExtension {
-    val name: String
-    val baseUrl: String
-    val lang: String            // "sub" o "latino"
-
-    suspend fun search(query: String): List<Anime>
-    suspend fun getAnimeInfo(url: String): Anime
-    suspend fun getEpisodes(url: String): List<Episode>
-    suspend fun getVideoSources(episodeUrl: String): List<VideoSource>
-    suspend fun getLatest(page: Int): List<Anime>
-    suspend fun getByGenre(genre: String, page: Int): List<Anime>
-}
-```
+La app incluye varias **extensiones preinstaladas** listas para usar. Solo descargá la app y empezá a ver anime al instante. Cada extensión obtiene contenido de una fuente diferente, lo que te da acceso a una amplia variedad de animes subtitulados y en latino.
 
 ---
 
