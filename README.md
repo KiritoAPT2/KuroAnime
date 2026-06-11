@@ -152,13 +152,12 @@ app/
 <div align="center">
   <table>
     <tr>
-      <td align="center"><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="100" alt="Icon"><br><sub>Inicio</sub></td>
-      <td align="center"><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="100" alt="Icon"><br><sub>Categorías</sub></td>
-      <td align="center"><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="100" alt="Icon"><br><sub>Reproductor</sub></td>
-      <td align="center"><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="100" alt="Icon"><br><sub>Ajustes</sub></td>
+      <td align="center"><img src="screenshots/inicio.jpg" width="200" alt="Inicio"><br><sub>Inicio</sub></td>
+      <td align="center"><img src="screenshots/categorias.jpg" width="200" alt="Categorías"><br><sub>Categorías</sub></td>
+      <td align="center"><img src="screenshots/reproductor.jpg" width="200" alt="Reproductor"><br><sub>Reproductor</sub></td>
+      <td align="center"><img src="screenshots/ajustes.jpg" width="200" alt="Ajustes"><br><sub>Ajustes</sub></td>
     </tr>
   </table>
-  <p><em>Próximamente capturas reales de la app.</em></p>
 </div>
 
 ---
