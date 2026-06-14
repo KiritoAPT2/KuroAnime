@@ -11,3 +11,6 @@ local.properties
 /app/build
 /app/release
 providers.json
+app/src/main/java/com/kuroanime/extension/AnimeFlvExtension.kt
+app/src/main/java/com/kuroanime/extension/TioAnimeExtension.kt
+app/src/main/java/com/kuroanime/extension/LatanimeExtension.kt
