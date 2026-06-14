@@ -14,3 +14,4 @@ providers.json
 app/src/main/java/com/kuroanime/extension/AnimeFlvExtension.kt
 app/src/main/java/com/kuroanime/extension/TioAnimeExtension.kt
 app/src/main/java/com/kuroanime/extension/LatanimeExtension.kt
+app/src/main/java/com/kuroanime/extension/AniyaeExtension.kt
