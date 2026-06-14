@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.kuroanime"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.kuroanime"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "2.0.2"
     }
 
     buildTypes {
@@ -32,11 +32,22 @@ android {
     }
 
     kotlin { jvmToolchain(17) }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     packaging {
         jniLibs {
             useLegacyPackaging = true
+        }
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            if (name.contains("release")) {
+                (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "kuroanime.apk"
+            }
         }
     }
 }
@@ -44,6 +55,7 @@ android {
 dependencies {
     coreLibraryDesugaring(libs.desugaring)
 
+    implementation(platform(libs.compose.bom))
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)
 
@@ -64,9 +76,9 @@ dependencies {
     implementation(libs.media3.session)
 
     implementation(libs.coil.compose)
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.quickjs)
     implementation(libs.jsoup)
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.material)
 }

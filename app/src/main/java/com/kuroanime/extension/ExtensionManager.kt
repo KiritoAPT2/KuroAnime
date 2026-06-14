@@ -15,7 +15,8 @@ object ExtensionManager {
     }
 
     fun getAll(): List<AnimeExtension> {
-        Log.d("ExtMgr", "getAll -> ${extensions.size} extensions")
+        val caller = Thread.currentThread().stackTrace.getOrNull(3)
+        Log.d("ExtMgr", "getAll called from ${caller?.className?.substringAfterLast('.')}.${caller?.methodName} -> ${extensions.size} extensions")
         return extensions.toList()
     }
 

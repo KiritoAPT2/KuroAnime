@@ -6,7 +6,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -18,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kuroanime.ui.components.KuroTopAppBar
 import com.kuroanime.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,11 +27,11 @@ fun SettingsAbout(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            KuroTopAppBar(
                 title = { Text("Acerca de") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(painter = painterResource(R.drawable.arrow_back), contentDescription = "Volver")
                     }
                 }
             )
@@ -49,7 +49,7 @@ fun SettingsAbout(onBack: () -> Unit) {
             Spacer(Modifier.height(32.dp))
 
             Image(
-                painter = painterResource(R.drawable.logo_kuroanime),
+                painter = painterResource(R.drawable.ic_logo),
                 contentDescription = "KUROANIME",
                 modifier = Modifier.fillMaxWidth(0.65f),
                 contentScale = ContentScale.Fit
@@ -58,7 +58,7 @@ fun SettingsAbout(onBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Versión 1.0.0",
+                text = "Versión 2.0.1",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -15,10 +15,6 @@ fun rememberExoPlayer(): ExoPlayer {
     val context = androidx.compose.ui.platform.LocalContext.current
     return remember {
         ExoPlayer.Builder(context).build()
-    }.also { player ->
-        DisposableEffect(player) {
-            onDispose { player.release() }
-        }
     }
 }
 

@@ -2,6 +2,8 @@ package com.kuroanime.player
 
 import android.util.Log
 import com.kuroanime.data.HttpClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.Request
 
 object EmbedResolver {
@@ -12,12 +14,12 @@ object EmbedResolver {
         return videoExts.none { url.contains(it, ignoreCase = true) }
     }
 
-    fun resolve(url: String, referer: String? = null): List<ResolvedVideo> {
+    suspend fun resolve(url: String, referer: String? = null): List<ResolvedVideo> = withContext(Dispatchers.IO) {
         val results = mutableListOf<ResolvedVideo>()
 
         if (!needsResolve(url)) {
             results.add(ResolvedVideo(url, "direct"))
-            return results
+            return@withContext results
         }
 
         try {
@@ -25,7 +27,7 @@ object EmbedResolver {
                 .header("User-Agent", "Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0")
             referer?.let { req.header("Referer", it) }
             val response = HttpClient.client.newCall(req.build()).execute()
-            val html = response.body?.string() ?: return results
+            val html = response.body?.string() ?: return@withContext results
             Log.d("EmbedResolver", "Fetched ${url}: ${html.length} chars")
 
             val ua = Regex("""https?://[^\s"')\]]+\.(?:mp4|m3u8|ts|webm)(?:\?[^\s"')\]]*)?""", RegexOption.IGNORE_CASE)
@@ -79,7 +81,7 @@ object EmbedResolver {
             Log.e("EmbedResolver", "Failed to resolve $url: ${e.message}")
         }
 
-        return results.distinctBy { it.url }
+        results.distinctBy { it.url }
     }
 
     data class ResolvedVideo(val url: String, val method: String)

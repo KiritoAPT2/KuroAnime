@@ -1,5 +1,18 @@
 package com.kuroanime.data.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class LatestEpisode(
+    val title: String,
+    val episode: String,
+    val image: String = "",
+    val animeUrl: String = "",
+    val episodeUrl: String = "",
+    val source: String = "",
+)
+
+@Serializable
 data class Anime(
     val title: String,
     val url: String,
@@ -14,6 +27,7 @@ data class Anime(
     val source: String = ""
 )
 
+@Serializable
 data class Episode(
     val number: Int,
     val title: String,
@@ -21,13 +35,24 @@ data class Episode(
     val imageUrl: String? = null
 )
 
+@Serializable
+data class QualityOption(
+    val label: String,
+    val url: String,
+    val bandwidth: Long = 0,
+)
+
+@Serializable
 data class VideoSource(
     val url: String,
     val quality: String = "default",
     val server: String = "default",
-    val headers: Map<String, String>? = null
+    val headers: Map<String, String>? = null,
+    val qualities: List<QualityOption> = emptyList(),
+    val isM3U8: Boolean = false,
 )
 
+@Serializable
 data class Extension(
     val name: String,
     val icon: String? = null,

@@ -29,8 +29,8 @@ fun SettingsCategory(
             Text(
                 text = it,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 0.dp, bottom = 8.dp, top = 8.dp)
             )
         }
@@ -41,7 +41,7 @@ fun SettingsCategory(
                 .animateContentSize(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {

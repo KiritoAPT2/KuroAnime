@@ -30,6 +30,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.kuroanime.data.model.VideoSource
+import com.kuroanime.ui.components.KuroTopAppBar
 import com.kuroanime.player.enterImmersive
 import com.kuroanime.player.exitImmersive
 import com.kuroanime.player.play
@@ -188,7 +189,7 @@ fun WebViewPlayerScreen(url: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             if (!isPlaying && showWebViewFallback) {
-                TopAppBar(
+                KuroTopAppBar(
                     title = {
                         Text(pageTitle.ifEmpty { Uri.parse(url).host ?: "Reproductor" })
                     },
@@ -263,7 +264,6 @@ fun WebViewPlayerScreen(url: String, onBack: () -> Unit) {
                             )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
-                            settings.allowContentAccess = true
                             settings.setSupportZoom(true)
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false

@@ -3,7 +3,10 @@ package com.kuroanime.extension
 import android.content.Context
 import com.kuroanime.data.model.Anime
 import com.kuroanime.data.model.Episode
+import com.kuroanime.data.model.LatestEpisode
 import com.kuroanime.data.model.VideoSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,7 +25,7 @@ class JsExtension(
     private val engine = JsExtensionEngine(httpClient)
     private var loaded = false
 
-    fun load() {
+    suspend fun load() {
         if (loaded) return
         val jsCode = readAssetFile(jsFileName)
         engine.loadExtension(jsCode)
@@ -52,6 +55,10 @@ class JsExtension(
         val json = engine.callSync("detail", url) ?: return emptyList()
         return parseEpisodes(json)
     }
+
+    override suspend fun getLatestEpisodes(): List<LatestEpisode> = emptyList()
+    override suspend fun getAiringAnime(): List<Anime> = emptyList()
+    override suspend fun getNews(): List<Anime> = emptyList()
 
     override suspend fun getByGenre(genre: String, page: Int): List<Anime> {
         load()
@@ -156,8 +163,8 @@ class JsExtension(
         return map.takeIf { it.isNotEmpty() }
     }
 
-    private fun readAssetFile(fileName: String): String {
-        return appContext.assets.open("extensions/$fileName").bufferedReader().use { it.readText() }
+    private suspend fun readAssetFile(fileName: String): String = withContext(Dispatchers.IO) {
+        appContext.assets.open("extensions/$fileName").bufferedReader().use { it.readText() }
     }
 
     data class ExtensionMetadata(

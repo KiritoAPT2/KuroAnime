@@ -5,13 +5,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.kuroanime.R
+import com.kuroanime.ui.components.KuroTopAppBar
 import com.kuroanime.data.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -19,15 +20,17 @@ import com.kuroanime.data.ThemeMode
 fun SettingsAppearance(
     themeMode: ThemeMode,
     onThemeModeChanged: (ThemeMode) -> Unit,
+    dynamicColor: Boolean = false,
+    onDynamicColorChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
+            KuroTopAppBar(
                 title = { Text("Apariencia") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(painter = painterResource(R.drawable.arrow_back), contentDescription = "Volver")
                     }
                 }
             )
@@ -188,6 +191,52 @@ fun SettingsAppearance(
             }
 
             Spacer(Modifier.height(32.dp))
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "Colores din�micos",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 0.dp, bottom = 8.dp, top = 8.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Usar colores del wallpaper",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Toma los colores primarios del fondo de pantalla de tu dispositivo en lugar de usar el tema rojo personalizado.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = dynamicColor,
+                            onCheckedChange = onDynamicColorChanged,
+                        )
+                    }
+                }
+            }
         }
     }
 }
+

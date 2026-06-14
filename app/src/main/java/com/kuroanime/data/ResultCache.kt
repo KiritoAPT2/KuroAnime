@@ -19,8 +19,23 @@ object ResultCache {
         return entry.data as? T
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getStale(key: String): T? {
+        val entry = cache[key] ?: return null
+        return entry.data as? T
+    }
+
+    fun isStale(key: String): Boolean {
+        val entry = cache[key] ?: return true
+        return System.currentTimeMillis() > entry.expiresAt
+    }
+
     fun <T> set(key: String, data: T, ttlMs: Long) {
         cache[key] = CacheEntry(data, System.currentTimeMillis() + ttlMs)
+    }
+
+    fun remove(key: String) {
+        cache.remove(key)
     }
 
     fun clear() {

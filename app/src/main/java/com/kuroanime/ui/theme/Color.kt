@@ -2,12 +2,14 @@ package com.kuroanime.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val SurfaceLight = Color(0xFFF5F5F5)
-val OnSurfaceDark = Color(0xFFE8E8EC)
-val OnSurfaceLight = Color(0xFF1C1C1E)
-val OutlineLight = Color(0xFFC6C6C8)
+val DefaultThemeColor = Color(0xFFEF5350)
+val AuroraGlowRed = Color(0xFFEF5350)
+val AuroraBloodRed = Color(0xFF8A0010)
+val AuroraNeonGlow = Color(0xFFFF0028)
+val AuroraDarkBlood = Color(0xFF3A0008)
+val KuroSecondaryColor = Color(0xFFFF8A65)
 
-// --- Dark Red Theme Colors (logo-matched) ---
+// Dark Red Theme Colors
 val DarkRedPrimary = Color(0xFFEF5350)
 val DarkRedOnPrimary = Color(0xFFFFFFFF)
 val DarkRedPrimaryContainer = Color(0xFF93000A)
@@ -24,15 +26,7 @@ val DarkRedOutline = Color(0xFF49454F)
 val DarkRedOutlineVariant = Color(0xFF2E2A35)
 val DarkRedInversePrimary = Color(0xFFFF5252)
 
-// --- Surface containers for depth hierarchy ---
-val SurfaceContainer = Color(0xFF0A0A0F)
-val SurfaceContainerHigh = Color(0xFF121218)
-val SurfaceContainerHighest = Color(0xFF1A1A22)
-val SurfaceContainerLow = Color(0xFF08080C)
-val SurfaceContainerLowest = Color(0xFF000000)
-val SurfaceBright = Color(0xFF2B2930)
-val SurfaceDim = Color(0xFF000000)
-
+// Light Red Theme Colors
 val RedPrimary = Color(0xFFEF5350)
 val RedOnPrimary = Color(0xFFFFFFFF)
 val RedPrimaryContainer = Color(0xFFFFCDD2)
@@ -41,7 +35,7 @@ val RedSecondary = Color(0xFFFF7043)
 val RedOnSecondary = Color(0xFFFFFFFF)
 val RedSecondaryContainer = Color(0xFFFFE0B2)
 val RedOnSecondaryContainer = Color(0xFF3E2723)
-val RedBackground = Color(0xFFFCFCFC)
+val RedBackground = Color(0xFFFFF8F4EF)
 val RedOnBackground = Color(0xFF1C1C1E)
 val RedSurface = Color(0xFFFFFFFF)
 val RedOnSurface = Color(0xFF1C1C1E)
@@ -50,6 +44,32 @@ val RedOnSurfaceVariant = Color(0xFF49454F)
 val RedOutline = Color(0xFFE0E0E0)
 val RedOutlineVariant = Color(0xFFCAC4D0)
 
+// Light surface containers (Material3 semantics)
+val LightSurfaceContainer = Color(0xFFF5F5F5)
+val LightSurfaceContainerHigh = Color(0xFFEEEEEE)
+val LightSurfaceContainerHighest = Color(0xFFE8E8E8)
+val LightSurfaceContainerLow = Color(0xFFFCFCFC)
+val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
+val LightSurfaceBright = Color(0xFFFFF8F4EF)
+val LightSurfaceDim = Color(0xFFE0E0E0)
+
+// Pastel aurora for light mode
+val LightAuroraPrimary = Color(0xFFFFE0E0)
+val LightAuroraSecondary = Color(0xFFF2D0D0)
+
+// OLED surface colors
 val OledBackground = Color(0xFF000000)
-val OledSurface = Color(0xFF050508)
-val OledSurfaceVariant = Color(0xFF0A0A0F)
+val OledSurface = Color(0xFF000000)
+val OledSurfaceVariant = Color(0xFF0D0D0D)
+val SurfaceContainer = Color(0xFF0D0D0D)
+val SurfaceContainerHigh = Color(0xFF141414)
+val SurfaceContainerHighest = Color(0xFF1C1C1C)
+val SurfaceContainerLow = Color(0xFF090909)
+val SurfaceContainerLowest = Color(0xFF000000)
+val SurfaceBright = Color(0xFF2C2C2C)
+val SurfaceDim = Color(0xFF000000)
+
+val GlassBorderRed = Color(0x0DEF5350)
+val GlassBackground = Color(0x0DFFFFFF)
+val GlassBackgroundLight = Color(0x08000000)
+val CardShadowBlack = Color(0x1A000000)

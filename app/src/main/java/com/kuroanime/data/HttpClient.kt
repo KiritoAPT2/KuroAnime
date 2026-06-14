@@ -1,7 +1,13 @@
 package com.kuroanime.data
 
 import android.content.Context
+import com.kuroanime.data.network.BrowserProfiles
+import com.kuroanime.data.network.DnsOverHttps
+import com.kuroanime.data.network.PersistentCookieJar
+import com.kuroanime.data.network.UserAgents
 import okhttp3.Cache
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import java.io.File
@@ -11,10 +17,32 @@ object HttpClient {
     private var _client: OkHttpClient? = null
 
     private val userAgentInterceptor = Interceptor { chain ->
-        val request = chain.request().newBuilder()
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        val request = chain.request()
+        val url = request.url.toString()
+        val ua = UserAgents.forHost(url)
+        val newRequest = request.newBuilder()
+            .header("User-Agent", ua)
             .build()
-        chain.proceed(request)
+        chain.proceed(newRequest)
+    }
+
+    private val retryInterceptor = Interceptor { chain ->
+        var request = chain.request()
+        var response = chain.proceed(request)
+        var tryCount = 0
+        while (!response.isSuccessful && tryCount < 2) {
+            tryCount++
+            response.close()
+            response = chain.proceed(request)
+        }
+        response
+    }
+
+    private val cacheInterceptor = Interceptor { chain ->
+        val response = chain.proceed(chain.request())
+        response.newBuilder()
+            .header("Cache-Control", "public, max-age=60")
+            .build()
     }
 
     val client: OkHttpClient
@@ -23,12 +51,27 @@ object HttpClient {
     fun init(context: Context) {
         if (_client != null) return
         val cacheDir = File(context.cacheDir, "http_cache")
+
+        val dispatcher = Dispatcher().apply {
+            maxRequests = 64
+            maxRequestsPerHost = 10
+        }
+
         _client = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .followRedirects(true)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .connectionPool(ConnectionPool(20, 5, TimeUnit.MINUTES))
+            .dispatcher(dispatcher)
+            .cookieJar(PersistentCookieJar(context))
+            .cache(Cache(cacheDir, 100L * 1024 * 1024))
+            .dns(DnsOverHttps())
             .addInterceptor(userAgentInterceptor)
-            .cache(Cache(cacheDir, 50L * 1024 * 1024))
+            .addInterceptor(retryInterceptor)
+            .addNetworkInterceptor(cacheInterceptor)
+            .retryOnConnectionFailure(true)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .build()
     }
 }

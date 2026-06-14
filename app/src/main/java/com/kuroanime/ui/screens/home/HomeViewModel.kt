@@ -1,120 +1,140 @@
 package com.kuroanime.ui.screens.home
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kuroanime.data.PersistentResultCache
+import com.kuroanime.data.ResultCache
+import com.kuroanime.data.local.ContinueWatchingStorage
 import com.kuroanime.data.model.Anime
+import com.kuroanime.data.model.ContinueWatching
+import com.kuroanime.data.model.LatestEpisode
 import com.kuroanime.extension.AnimeAggregator
-import com.kuroanime.extension.ExtensionManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
+
+data class GenreSection(
+    val genre: String,
+    val title: String,
+    val items: List<Anime> = emptyList(),
+    val isLoading: Boolean = false,
+)
 
 class HomeViewModel : ViewModel() {
-    private val _selectedCategory = MutableStateFlow("inicio")
-    val selectedCategory = _selectedCategory.asStateFlow()
+    private val _continueWatching = MutableStateFlow<List<ContinueWatching>>(emptyList())
+    val continueWatching = _continueWatching.asStateFlow()
 
-    private val _animeList = MutableStateFlow<List<Anime>>(emptyList())
-    val animeList = _animeList.asStateFlow()
+    private val _latestEpisodes = MutableStateFlow<List<LatestEpisode>>(emptyList())
+    val latestEpisodes = _latestEpisodes.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _popularAnime = MutableStateFlow<List<Anime>>(emptyList())
+    val popularAnime = _popularAnime.asStateFlow()
+
+    private val _recommendedAnime = MutableStateFlow<List<Anime>>(emptyList())
+    val recommendedAnime = _recommendedAnime.asStateFlow()
+
+    private val _generosPopulares = MutableStateFlow<List<GenreSection>>(emptyList())
+    val generosPopulares = _generosPopulares.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
 
-    private var loadJob: Job? = null
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing = _isRefreshing.asStateFlow()
+
+    private val _randomAnimeEvent = Channel<Anime>(Channel.CONFLATED)
+    val randomAnimeEvent = _randomAnimeEvent.receiveAsFlow()
+
+    private val generosConfig = listOf(
+        "accion" to "Acción",
+        "aventura" to "Aventura",
+        "fantasia" to "Fantasía",
+    )
 
     init {
-        loadCategory("inicio")
+        loadHome()
     }
 
-    fun selectCategory(category: String) {
-        if (_selectedCategory.value != category) {
-            _selectedCategory.value = category
-            loadCategory(category)
-        }
-    }
-
-    private fun loadCategory(category: String) {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
-            val categoryStart = System.currentTimeMillis()
+    private fun loadHome() {
+        viewModelScope.launch {
             _isLoading.value = true
-            _animeList.value = emptyList()
-            Log.d("HomeVM", "Loading category: $category")
+            loadContinueWatchingInternal()
+            loadHomeData()
+            _isLoading.value = false
+        }
+    }
 
-            when (category) {
-                "inicio" -> {
-                    var firstBatch = true
-                    AnimeAggregator.getLatestFlow().collect { list ->
-                        _animeList.value = list
-                        if (list.isNotEmpty() && firstBatch) {
-                            firstBatch = false
-                            _isLoading.value = false
-                            Log.d("PERF", "First anime batch rendered: ${System.currentTimeMillis() - categoryStart}ms")
-                        }
-                    }
-                }
-                "emision" -> {
-                    val ongoing = AnimeAggregator.getLatest().filter {
-                        it.status?.lowercase()?.contains("emisi") == true
-                    }.ifEmpty { AnimeAggregator.getLatest().take(30) }
-                    _animeList.value = ongoing
-                    _isLoading.value = false
-                }
-                "latinos" -> {
-                    val latanime = ExtensionManager.getByName("Latanime")
-                    val results = try {
-                        withContext(Dispatchers.IO) {
-                            withTimeout(8000) {
-                                val r = latanime?.getByGenre("latino", 1)?.take(30) ?: emptyList()
-                                Log.d("HomeVM", "Latanime.getByGenre(latino): ${r.size} results")
-                                r
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("HomeVM", "Latanime.getByGenre(latino) failed: ${e::class.simpleName} - ${e.message}")
-                        e.stackTraceToString().lines().take(3).forEach { Log.e("HomeVM", "  $it") }
-                        emptyList()
-                    }
-                    _animeList.value = results
-                    _isLoading.value = false
-                }
-                else -> loadGenreProgressively(category)
+    private suspend fun loadHomeData() {
+        val homeData = withContext(Dispatchers.IO) {
+            AnimeAggregator.getHomeData()
+        }
+        _latestEpisodes.value = homeData.latestEpisodes
+        _popularAnime.value = homeData.populares
+        _recommendedAnime.value = homeData.recomendaciones
+        _generosPopulares.value = generosConfig.map { (slug, title) ->
+            GenreSection(genre = slug, title = title)
+        }
+    }
+
+    fun loadGenero(slug: String) {
+        viewModelScope.launch {
+            val current = _generosPopulares.value.toMutableList()
+            val idx = current.indexOfFirst { it.genre == slug }
+            if (idx == -1 || current[idx].items.isNotEmpty() || current[idx].isLoading) return@launch
+            current[idx] = current[idx].copy(isLoading = true)
+            _generosPopulares.value = current
+
+            val items = withContext(Dispatchers.IO) {
+                AnimeAggregator.getByGenreFLV(slug)
+            }
+
+            val updated = _generosPopulares.value.toMutableList()
+            val updateIdx = updated.indexOfFirst { it.genre == slug }
+            if (updateIdx != -1) {
+                updated[updateIdx] = updated[updateIdx].copy(items = items, isLoading = false)
+                _generosPopulares.value = updated
             }
         }
     }
 
-    private suspend fun loadGenreProgressively(genre: String) {
-        val exts = ExtensionManager.getAll()
-        val resultsMap = mutableMapOf<Int, List<Anime>>()
-        var completed = 0
-        coroutineScope {
-            exts.forEachIndexed { index, ext ->
-                launch(Dispatchers.IO) {
-                    try {
-                        val timeout = if (ext.name == "TioAnime") 3000L else 5000L
-                        val r = withTimeout(timeout) { ext.getByGenre(genre, 1) }
-                        Log.d("HomeVM", "${ext.name}.getByGenre($genre): ${r.size} results")
-                        resultsMap[index] = r
-                    } catch (e: Exception) {
-                        Log.e("HomeVM", "${ext.name}.getByGenre($genre) failed: ${e.message}")
-                        resultsMap[index] = emptyList()
-                    }
-                    val combined = resultsMap.values.flatten()
-                    val dedup = mutableSetOf<String>()
-                    _animeList.value = combined.filter {
-                        val key = AnimeAggregator.normalizeTitle(it.title)
-                        key !in dedup && key.isNotBlank().also { dedup.add(key) }
-                    }
-                    if (completed == 0 && _animeList.value.isNotEmpty()) _isLoading.value = false
-                    completed++
-                    if (completed == exts.size) _isLoading.value = false
-                }
+    fun loadContinueWatching() {
+        viewModelScope.launch { loadContinueWatchingInternal() }
+    }
+
+    private suspend fun loadContinueWatchingInternal() {
+        _continueWatching.value = ContinueWatchingStorage.getAll()
+    }
+
+    fun removeContinueWatching(animeId: String, episodeNumber: Int) {
+        viewModelScope.launch {
+            ContinueWatchingStorage.remove(animeId, episodeNumber)
+            loadContinueWatchingInternal()
+        }
+    }
+
+    fun loadRandomAnime() {
+        viewModelScope.launch {
+            val anime = withContext(Dispatchers.IO) {
+                AnimeAggregator.getRandomAnime()
             }
+            if (anime != null) {
+                _randomAnimeEvent.send(anime)
+            }
+        }
+    }
+
+    fun refresh() {
+        if (_isRefreshing.value) return
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            ResultCache.clear()
+            PersistentResultCache.clear()
+            loadHome()
+            _isRefreshing.value = false
         }
     }
 }

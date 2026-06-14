@@ -1,247 +1,297 @@
 package com.kuroanime.extension
 
-import android.util.Log
-import com.kuroanime.data.HttpClient
 import com.kuroanime.data.model.Anime
 import com.kuroanime.data.model.Episode
+import com.kuroanime.data.model.LatestEpisode
 import com.kuroanime.data.model.VideoSource
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.Request
+import com.kuroanime.data.network.BrowserProfiles
+import com.kuroanime.extractor.ExtractorRegistry
+import com.kuroanime.extractor.VideoExtractorEngine
 
-@Serializable
-data class TioAnimeSearchResponse(
-    val results: List<TioAnimeItem> = emptyList()
-)
-
-@Serializable
-data class TioAnimeItem(
-    val url: String = "",
-    val name: String = "",
-    val image: String? = null
-)
-
-@Serializable
-data class TioAnimeDetail(
-    val name: String = "",
-    val image: String? = null,
-    val synopsis: String? = null,
-    val episodes: List<TioAnimeEp>? = null
-)
-
-@Serializable
-data class TioAnimeEp(
-    val name: String? = null,
-    val url: String = "",
-    val num: Int? = null
-)
-
-@Serializable
-data class TioAnimeServer(
-    val name: String? = null,
-    val url: String? = null
-)
-
-class TioAnimeExtension : AnimeExtension {
+class TioAnimeExtension : JsoupBasedExtension() {
     override val name = "TioAnime"
-    override val baseUrl = "https://jimov-api.vercel.app"
+    override val baseUrl = ProviderConfig.getBaseUrl(name) ?: "https://tioanime.com"
     override val lang = "es"
 
-    private val apiBase = "$baseUrl/anime/tioanime"
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun fetchApi(url: String): String? {
-        return try {
-            val req = Request.Builder().url(url)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36")
-                .build()
-            val resp = HttpClient.client.newCall(req).execute()
-            if (resp.isSuccessful) resp.body?.string() else null
-        } catch (_: Exception) { null }
-    }
+    private val videoCache = mutableMapOf<String, List<VideoSource>>()
 
     override suspend fun search(query: String): List<Anime> {
-        val body = fetchApi("$apiBase/filter?q=${query.replace(" ", "+")}&page=1") ?: return emptyList()
-        val items = try {
-            json.decodeFromString<List<TioAnimeItem>>(body)
-        } catch (_: Exception) {
-            json.decodeFromString<TioAnimeSearchResponse>(body).results
-        }
-        return items.map { Anime(title = it.name, url = it.url, imageUrl = it.image, source = name) }
-    }
-
-    override suspend fun getByGenre(genre: String, page: Int): List<Anime> {
-        return search(genre)
+        val doc = getDocument("$baseUrl/directorio?q=${query.replace(" ", "+")}")
+        return doc.select("a[href*='/anime/']").mapNotNull { el ->
+            val href = el.attr("href")
+            if (!href.startsWith("/anime/") || href.count { it == '/' } > 2) return@mapNotNull null
+            val title = el.ownText().ifBlank { el.text() }.ifBlank { return@mapNotNull null }
+            val img = el.select("img").attr("src").ifBlank { el.select("img").attr("data-src") }
+            Anime(
+                title = title,
+                url = "$baseUrl$href",
+                imageUrl = if (img.startsWith("http")) img else null,
+                source = name
+            )
+        }.distinctBy { it.title.lowercase().trim() }.take(20)
     }
 
     override suspend fun getLatest(page: Int): List<Anime> {
-        val body = fetchApi("$apiBase/filter?page=$page") ?: return emptyList()
-        val items = try {
-            json.decodeFromString<List<TioAnimeItem>>(body)
-        } catch (_: Exception) {
-            json.decodeFromString<TioAnimeSearchResponse>(body).results
+        val doc = getDocument("$baseUrl/")
+        val seen = mutableSetOf<String>()
+        val results = mutableListOf<Anime>()
+
+        doc.select("a[href*='/anime/']").forEach { el ->
+            val href = el.attr("href")
+            if (!href.startsWith("/anime/") || href.count { it == '/' } > 2) return@forEach
+            val title = el.ownText().ifBlank { return@forEach }
+            val url = "$baseUrl$href"
+            if (url in seen) return@forEach
+            seen.add(url)
+            val img = el.select("img").attr("src").ifBlank { el.select("img").attr("data-src") }
+            results.add(
+                Anime(
+                    title = title,
+                    url = url,
+                    imageUrl = if (img.startsWith("http")) img else null,
+                    source = name
+                )
+            )
         }
-        return items.map { Anime(title = it.name, url = it.url, imageUrl = it.image, source = name) }
+
+        val ordered = results.reversed()
+        val deduped = mutableListOf<Anime>()
+        val titles = mutableSetOf<String>()
+        for (a in ordered) {
+            val key = a.title.lowercase().trim()
+            if (key !in titles) { titles.add(key); deduped.add(a) }
+        }
+        return deduped.take(24)
+    }
+
+    override suspend fun getLatestEpisodes(): List<LatestEpisode> {
+        val doc = getDocument("$baseUrl/")
+        return doc.select("div.episodes a[href*='/ver/']").mapNotNull { el ->
+            val href = el.absUrl("href")
+            val text = el.text()
+            val epNum = text.filter { it.isDigit() }.toIntOrNull() ?: return@mapNotNull null
+            val title = el.select("span.title").text().ifBlank {
+                text.substringAfter(" ").ifBlank { text }
+            }
+            val animeSlug = href.substringAfter("/ver/").substringBeforeLast("-")
+            val img = el.select("img").attr("src").ifBlank { el.select("img").attr("data-src") }
+            LatestEpisode(
+                title = title,
+                episode = "Episodio $epNum",
+                image = if (img.startsWith("http")) img else "",
+                animeUrl = "$baseUrl/anime/$animeSlug",
+                episodeUrl = href,
+                source = name,
+            )
+        }.take(24)
     }
 
     override suspend fun getAnimeInfo(url: String): Anime {
-        val body = fetchApi(url) ?: return Anime(title = "", url = url, source = name)
-        return try {
-            val detail = json.decodeFromString<TioAnimeDetail>(body)
-            val eps = detail.episodes?.mapNotNull { ep ->
-                val num = ep.num ?: ep.name?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                Episode(number = num, title = ep.name ?: "Episodio $num", url = ep.url)
-            } ?: emptyList()
-            Anime(
-                title = detail.name, url = url,
-                imageUrl = detail.image,
-                synopsis = detail.synopsis,
-                episodes = eps, source = name
-            )
-        } catch (e: Exception) {
-            Log.e("TioAnime", "getAnimeInfo failed: ${e.message}")
-            Anime(title = "", url = url, source = name)
+        val doc = getDocument(url)
+        val title = doc.select("h1.title").text().ifBlank {
+            doc.select("h1").text()
         }
+        val synopsis = doc.select("p.sinopsis").text().ifBlank {
+            doc.select("p").firstOrNull { it.text().length > 50 }?.text() ?: ""
+        }
+        val img = doc.select("div.thumb img").attr("src").ifBlank {
+            doc.select("img[src*='/uploads/']").attr("src")
+        }
+        val genres = doc.select("a[href*='/directorio?genero=']").eachText()
+        val status = doc.select("a.status").text()
+
+        val slug = url.substringAfter("/anime/")
+        val episodes = extractEpisodesFromScript(doc, slug)
+
+        return Anime(
+            title = title.ifBlank { slug.replace("-", " ") },
+            url = url,
+            imageUrl = if (img.startsWith("http")) img else "$baseUrl$img".takeIf { img.isNotBlank() },
+            synopsis = synopsis,
+            genres = genres,
+            status = status,
+            episodes = episodes.sortedBy { it.number },
+            source = name
+        )
+    }
+
+    override suspend fun getEpisodes(url: String): List<Episode> {
+        val slug = url.substringAfter("/anime/")
+        val doc = getDocument(url)
+        return extractEpisodesFromScript(doc, slug).sortedBy { it.number }
+    }
+
+    private fun extractEpisodesFromScript(doc: org.jsoup.nodes.Document, slug: String): List<Episode> {
+        val scripts = doc.select("script:containsData(var episodes = [)")
+        for (script in scripts) {
+            try {
+                val data = script.data()
+                val start = data.indexOf("var episodes = [")
+                if (start == -1) continue
+                val end = data.indexOf("];", start)
+                if (end == -1) continue
+                val arrStr = data.substring(start + "var episodes = ".length, end + 1)
+                val nums = arrStr.replace(Regex("[^0-9,]"), "").split(",").mapNotNull { it.toIntOrNull() }
+                if (nums.isNotEmpty()) {
+                    return nums.map { n ->
+                        Episode(
+                            number = n,
+                            title = "Episodio $n",
+                            url = "$baseUrl/ver/$slug-$n"
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        return emptyList()
     }
 
     override suspend fun getVideoSources(episodeUrl: String): List<VideoSource> {
-        val ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+        videoCache[episodeUrl]?.let { return it }
 
-        val embedServers = try {
-            val body = fetchApi(episodeUrl) ?: return emptyList()
-            json.decodeFromString<List<TioAnimeServer>>(body)
-                .filter { it.name != null && it.url != null }
-        } catch (_: Exception) {
+        val doc = getDocument(episodeUrl)
+        val sources = mutableListOf<VideoSource>()
+
+        downloadLinksFromTable(doc, sources)
+        videoScriptSources(doc, sources)
+
+        val sorted = if (sources.isNotEmpty()) {
+            prioritySort(sources).take(6)
+        } else {
             emptyList()
         }
+        if (sorted.isNotEmpty()) videoCache[episodeUrl] = sorted
+        return sorted
+    }
 
-        if (embedServers.isEmpty()) {
-            val extracted = extractFromEmbed(episodeUrl, ua)
-            if (extracted != null) {
-                return listOf(VideoSource(url = extracted, server = name, quality = "API",
-                    headers = mapOf("Referer" to refererFor(episodeUrl), "User-Agent" to ua)))
-            }
-            return listOf(VideoSource(url = episodeUrl, server = name, quality = "API",
-                headers = mapOf("Referer" to "https://tioanime.com/", "User-Agent" to ua)))
-        }
-
-        val preferred = listOf("YourUpload", "Netu", "HQQ", "Okru", "Mp4Upload", "Streamtape")
-        val sorted = preferred.mapNotNull { p -> embedServers.find { it.name == p } } +
-            embedServers.filter { it.name !in preferred }
-
-        return sorted.mapNotNull { entry ->
-            val embedUrl = entry.url ?: return@mapNotNull null
-            val extracted = extractFromEmbed(embedUrl, ua)
-            val serverName = entry.name ?: "API"
-            if (extracted != null) {
-                VideoSource(url = extracted, server = serverName, quality = name,
-                    headers = mapOf("Referer" to refererFor(embedUrl), "User-Agent" to ua))
-            } else {
-                VideoSource(url = embedUrl, server = serverName, quality = name,
-                    headers = mapOf("User-Agent" to ua))
-            }
+    private fun downloadLinksFromTable(doc: org.jsoup.nodes.Document, sources: MutableList<VideoSource>) {
+        doc.select("table.table-downloads tbody tr").forEach { row ->
+            try {
+                val serverName = row.select("td").first()?.text()?.ifBlank {
+                    row.select("td").first()?.text()
+                } ?: return@forEach
+                val link = row.select("a.btn-download").first()?.absUrl("href") ?: return@forEach
+                sources.add(
+                    VideoSource(
+                        url = link,
+                        server = serverName.lowercase(),
+                        quality = name,
+                        headers = BrowserProfiles.basicHeaders(BrowserProfiles.forHost(link), refererFor(link)),
+                    )
+                )
+            } catch (_: Exception) {}
         }
     }
 
-    private fun extractFromEmbed(embedUrl: String, ua: String): String? {
-        return when {
-            embedUrl.contains("yourupload.com") -> extractYourUpload(embedUrl, ua)
-            embedUrl.contains("hqq.tv") || embedUrl.contains("netu") -> extractNetu(embedUrl, ua)
-            embedUrl.contains("ok.ru") -> extractOkru(embedUrl, ua)
-            embedUrl.contains("mp4upload.com") -> extractMp4Upload(embedUrl, ua)
-            embedUrl.contains("streamtape.com") -> extractStreamtape(embedUrl, ua)
-            else -> null
-        }
-    }
+    private suspend fun videoScriptSources(doc: org.jsoup.nodes.Document, sources: MutableList<VideoSource>) {
+        val scripts = doc.select("script:containsData(var videos = [)")
+        for (script in scripts) {
+            try {
+                val data = script.data()
+                val start = data.indexOf("var videos = [")
+                if (start == -1) continue
+                val end = data.indexOf("];", start)
+                if (end == -1) continue
+                val arrStr = data.substring(start + "var videos = ".length, end + 1)
 
-    private fun fetchHtml(url: String, ua: String, referer: String? = null): String? {
-        return try {
-            val req = Request.Builder().url(url)
-                .header("User-Agent", ua)
-                .header("Accept", "text/html,application/xhtml+xml,*/*")
-                .header("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
-            referer?.let { req.header("Referer", it) }
-            val resp = HttpClient.client.newCall(req.build()).execute()
-            if (resp.isSuccessful) resp.body?.string() else null
-        } catch (_: Exception) { null }
-    }
-
-    private fun extractYourUpload(embedUrl: String, ua: String): String? {
-        val html = fetchHtml(embedUrl, ua, "https://www.yourupload.com/") ?: return null
-        val m = Regex("""file:\s*['"]?(https?://[^'"<>\s]+\.mp4[^'"<>\s]*)""").find(html)
-        val url = m?.groupValues?.get(1) ?: return null
-        if (url.contains("novideo") || url.contains("/embed/")) return null
-        return url
-    }
-
-    private fun extractNetu(embedUrl: String, ua: String): String? {
-        val mirrors = mutableListOf(embedUrl)
-        if (embedUrl.contains("hqq.tv")) {
-            mirrors.add(embedUrl.replace("hqq.tv", "hqq.net"))
-        }
-        if (embedUrl.contains("netu.tv") || embedUrl.contains("netu.ac")) {
-            mirrors.add(embedUrl.replace(Regex("netu\\.(tv|ac)"), "hqq.tv"))
-        }
-
-        val patterns = listOf(
-            Regex("""'(https?://[^']+\.m3u8[^']*)'"""),
-            Regex(""""(https?://[^"]+\.m3u8[^"]*)""""),
-            Regex("""file:\s*["']?(https?://[^"'<>\s]+\.m3u8[^"'<>\s]*)"""),
-            Regex("""source\s*[=:]\s*["']?(https?://[^"'<>\s]+\.m3u8[^"'<>\s]*)"""),
-            Regex("""url:\s*["'](https?://[^"']+\.m3u8[^"']*)"""),
-            Regex("""'(https?://[^']+\.mp4[^']*)'"""),
-            Regex(""""(https?://[^"]+\.mp4[^"]*)""""),
-        )
-
-        for (mirrorUrl in mirrors) {
-            val html = fetchHtml(mirrorUrl, ua, "https://tioanime.com/") ?: continue
-            for (pattern in patterns) {
-                val m = pattern.find(html)
-                if (m != null) {
-                    val url = m.groupValues[1].replace("\\", "")
-                    if (url.startsWith("http") && !url.contains("undefined") && !url.contains("null")) {
-                        return url
-                    }
+                val rawEntries = extractVideosArrayEntries(arrStr)
+                for (entry in rawEntries) {
+                    try {
+                        val parts = entry.split(",").map { it.trim() }
+                        if (parts.size < 2) continue
+                        val serverName = parts[0].removeSurrounding("\"").removeSurrounding("'")
+                        val embedUrl = parts[1].removeSurrounding("\"").removeSurrounding("'")
+                            .replace("\\/", "/")
+                        if (serverName.isBlank() || embedUrl.isBlank()) continue
+                        processEmbedUrl(embedUrl, serverName, sources)
+                    } catch (_: Exception) {}
                 }
-            }
+            } catch (_: Exception) {}
         }
-        return null
     }
 
-    private fun extractOkru(embedUrl: String, ua: String): String? {
-        val html = fetchHtml(embedUrl, ua, "https://tioanime.com/") ?: return null
-        val hls = Regex(""""hlsMasterPlaylistUrl":"([^"]+)"""").find(html)
-        if (hls != null) return hls.groupValues[1].replace("\\", "")
-        val mp4 = Regex(""""mp4":\s*\[.*?"src":"([^"]+)"""", RegexOption.DOT_MATCHES_ALL).find(html)
-        if (mp4 != null) return mp4.groupValues[1].replace("\\", "")
-        return null
+    private fun extractVideosArrayEntries(arrStr: String): List<String> {
+        val entries = mutableListOf<String>()
+        var depth = 0
+        var inStr = false
+        var esc = false
+        var current = StringBuilder()
+        for (c in arrStr) {
+            if (esc) { esc = false; current.append(c); continue }
+            if (c == '\\' && inStr) { esc = true; current.append(c); continue }
+            if (c == '"' || c == '\'') { inStr = !inStr; current.append(c); continue }
+            if (!inStr) {
+                if (c == '[') { depth++; if (depth == 1) { current = StringBuilder(); continue } }
+                if (c == ']') { depth--; if (depth == 0) { entries.add(current.toString()); continue } }
+            }
+            current.append(c)
+        }
+        return entries
     }
 
-    private fun extractMp4Upload(embedUrl: String, ua: String): String? {
-        val html = fetchHtml(embedUrl, ua, "https://tioanime.com/") ?: return null
-        val m = Regex("""src:\s*"(https?://[^"]+\.mp4[^"]*)"""").find(html)
-        return m?.groupValues?.get(1)
+    private suspend fun processEmbedUrl(embedUrl: String, serverName: String, sources: MutableList<VideoSource>) {
+        val extractor = ExtractorRegistry.findForUrl(embedUrl)
+        val profile = BrowserProfiles.forHost(embedUrl)
+        val headers = BrowserProfiles.basicHeaders(profile, refererFor(embedUrl))
+        if (extractor != null) {
+            val result = VideoExtractorEngine.smartExtractSingle(embedUrl, refererFor(embedUrl), null, extractor)
+            if (result.videoUrl != null) {
+                sources.add(
+                    VideoSource(
+                        url = result.videoUrl,
+                        server = extractor.serverKey,
+                        quality = name,
+                        headers = headers,
+                        qualities = result.qualities,
+                        isM3U8 = result.videoUrl.contains(".m3u8"),
+                    )
+                )
+            } else {
+                sources.add(VideoSource(url = embedUrl, server = extractor.serverKey, quality = name, headers = headers))
+            }
+        } else {
+            sources.add(VideoSource(url = embedUrl, server = serverName.lowercase(), quality = name, headers = headers))
+        }
     }
 
-    private fun extractStreamtape(embedUrl: String, ua: String): String? {
-        val html = fetchHtml(embedUrl, ua, "https://tioanime.com/") ?: return null
-        val link = Regex("""id="ideoooolink"[^>]*>([^<]+)</a>""").find(html)
-        if (link != null) return "https:" + link.groupValues[1].trim()
-        val base = Regex("""//[^"]*streamtape[^/]+/get_video\?[^"]+""").find(html)
-        return base?.let { "https:" + it.value }
+    override suspend fun getByGenre(genre: String, page: Int): List<Anime> {
+        val doc = getDocument("$baseUrl/directorio?genero=${genre.lowercase()}&page=$page")
+        return doc.select("a[href*='/anime/']").mapNotNull { el ->
+            val href = el.attr("href")
+            if (!href.startsWith("/anime/") || href.count { it == '/' } > 2) return@mapNotNull null
+            val title = el.ownText().ifBlank { el.text() }.ifBlank { return@mapNotNull null }
+            val img = el.select("img").attr("src").ifBlank { el.select("img").attr("data-src") }
+            Anime(title = title, url = "$baseUrl$href", imageUrl = if (img.startsWith("http")) img else null, source = name)
+        }.distinctBy { it.title.lowercase().trim() }.take(20)
     }
 
-    override suspend fun getEpisodes(url: String): List<Episode> = emptyList()
+    override suspend fun getVideoSourceFast(episodeUrl: String): VideoSource? {
+        val cached = videoCache[episodeUrl]
+        if (cached != null && cached.isNotEmpty()) return cached.first()
+        return getVideoSources(episodeUrl).firstOrNull()
+    }
+
+    private fun prioritySort(sources: List<VideoSource>): List<VideoSource> {
+        val preferred = listOf("streamtape", "stape", "mp4upload", "yourupload", "netu", "mega", "voe", "mixdrop")
+        val top = preferred.mapNotNull { p -> sources.find { it.server.contains(p, true) } }
+        val rest = sources.filter { s -> top.none { it.url == s.url } }
+        return top + rest
+    }
+
+    override suspend fun getAiringAnime(): List<Anime> = emptyList()
+    override suspend fun getNews(): List<Anime> = emptyList()
 
     companion object {
         fun refererFor(url: String): String = when {
-            url.contains("yourupload.com") -> "https://www.yourupload.com/"
+            url.contains("yourupload") -> "https://www.yourupload.com/"
             url.contains("hqq.tv") || url.contains("netu") -> "https://hqq.tv/"
             url.contains("ok.ru") -> "https://ok.ru/"
             url.contains("streamsb") || url.contains("sbfull") -> "https://streamsb.com/"
-            url.contains("fembed") -> "https://www.fembed.com/"
             url.contains("mp4upload") -> "https://www.mp4upload.com/"
-            url.contains("streamtape") -> "https://streamtape.com/"
+            url.contains("streamtape") || url.contains("stape") -> "https://streamtape.com/"
+            url.contains("dood") -> "https://doodstream.com/"
+            url.contains("voe.sx") -> "https://voe.sx/"
+            url.contains("mega") -> "https://mega.nz/"
             else -> "https://tioanime.com/"
         }
     }

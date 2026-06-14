@@ -3,6 +3,7 @@ package com.kuroanime.extension
 import com.kuroanime.data.HttpClient
 import com.kuroanime.data.model.Anime
 import com.kuroanime.data.model.Episode
+import com.kuroanime.data.model.LatestEpisode
 import com.kuroanime.data.model.VideoSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,4 +25,7 @@ abstract class JsoupBasedExtension : AnimeExtension {
     override suspend fun getVideoSources(episodeUrl: String): List<VideoSource> = emptyList()
     override suspend fun getLatest(page: Int): List<Anime> = emptyList()
     override suspend fun getByGenre(genre: String, page: Int): List<Anime> = emptyList()
+    override suspend fun getLatestEpisodes(): List<LatestEpisode> = emptyList()
+    override suspend fun getAiringAnime(): List<Anime> = emptyList()
+    override suspend fun getNews(): List<Anime> = emptyList()
 }
