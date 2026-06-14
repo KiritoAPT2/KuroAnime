@@ -31,7 +31,7 @@
 <table>
   <tr>
     <td align="center" width="25%"><b>🎬 Anime Latino</b><br><small>Animes doblados al español latino actualizados semanalmente</small></td>
-    <td align="center" width="25%"><b>📡 Múltiples Fuentes</b><br><small>Extensiones para AnimeFLV, Latanime, TioAnime y más</small></td>
+    <td align="center" width="25%"><b>📡 Múltiples Fuentes</b><br><small>Extensiones para múltiples fuentes de anime</small></td>
     <td align="center" width="25%"><b>🌙 Diseño OLED</b><br><small>Modo oscuro con negro puro para pantallas AMOLED</small></td>
     <td align="center" width="25%"><b>▶️ 2do Plano</b><br><small>Reproducción en segundo plano con audio persistente</small></td>
   </tr>
@@ -108,10 +108,7 @@ app/
 │   │   │   ├── JsExtensionEngine.kt     # Motor QuickJS
 │   │   │   ├── JsExtension.kt           # Wrapper JS
 │   │   │   ├── JsoupBasedExtension.kt   # Base para scraping
-│   │   │   ├── AnimeFlvExtension.kt
-│   │   │   ├── LatanimeExtension.kt
-│   │   │   ├── TioAnimeExtension.kt
-│   │   │   └── AniyaeExtension.kt
+
 │   │   ├── player/
 │   │   │   ├── ExoPlayerUtils.kt
 │   │   │   ├── EmbedResolver.kt
